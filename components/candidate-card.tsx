@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { MapPin, Calendar, Eye, X, Building, GraduationCap, DollarSign, Clock, Mail, Phone } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
@@ -9,6 +9,8 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Separator } from "@/components/ui/separator"
 import type { Candidate } from "@/types/candidate"
+import { useTeamSelection } from "@/hooks/use-team-selection"
+import { computeCandidateScore, inferPrimaryRole } from "@/lib/scoring"
 
 interface CandidateCardProps {
   candidate: Candidate
@@ -16,10 +18,16 @@ interface CandidateCardProps {
   isDisabled: boolean
   onSelect: (candidate: Candidate) => void
   onRemove: (candidateId: string) => void
+  onToggleCompare?: (candidate: Candidate) => void
+  isInCompare?: boolean
 }
 
-export function CandidateCard({ candidate, isSelected, isDisabled, onSelect, onRemove }: CandidateCardProps) {
+export function CandidateCard({ candidate, isSelected, isDisabled, onSelect, onRemove, onToggleCompare, isInCompare }: CandidateCardProps) {
   const [showDetails, setShowDetails] = useState(false)
+  const { selectedCandidates, toggleBookmark, isBookmarked } = useTeamSelection()
+
+  const score = useMemo(() => computeCandidateScore(candidate, selectedCandidates), [candidate, selectedCandidates])
+  const primaryRole = useMemo(() => inferPrimaryRole(candidate.skills), [candidate.skills])
 
   const getInitials = (name: string) => {
     return name
@@ -81,10 +89,16 @@ export function CandidateCard({ candidate, isSelected, isDisabled, onSelect, onR
               <div>
                 <h3 className="font-semibold text-base">{candidate.name}</h3>
                 <p className="text-sm text-muted-foreground">{candidate.role}</p>
+                {primaryRole !== "Unknown" && (
+                  <Badge variant="outline" className="mt-1 text-[10px]">Primary: {primaryRole}</Badge>
+                )}
               </div>
             </div>
-            <div className="text-lg" title={candidate.gender}>
-              {getGenderIcon(candidate.gender)}
+            <div className="flex items-center gap-2">
+              <Badge variant="secondary" className="text-xs">Score {score}</Badge>
+              <div className="text-lg" title={candidate.gender}>
+                {getGenderIcon(candidate.gender)}
+              </div>
             </div>
           </div>
         </CardHeader>
@@ -128,6 +142,32 @@ export function CandidateCard({ candidate, isSelected, isDisabled, onSelect, onR
               {isSelected ? "Remove" : "Select"}
             </Button>
             <Button
+              variant={isBookmarked(candidate.id) ? "secondary" : "outline"}
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation()
+                toggleBookmark(candidate)
+              }}
+              className="px-3"
+              title={isBookmarked(candidate.id) ? "Bookmarked" : "Bookmark"}
+            >
+              ★
+            </Button>
+            {onToggleCompare && (
+              <Button
+                variant={isInCompare ? "secondary" : "outline"}
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onToggleCompare(candidate)
+                }}
+                className="px-3"
+                title={isInCompare ? "In Compare" : "Add to Compare"}
+              >
+                ⇄
+              </Button>
+            )}
+            <Button
               variant="outline"
               size="sm"
               onClick={(e) => {
@@ -155,6 +195,9 @@ export function CandidateCard({ candidate, isSelected, isDisabled, onSelect, onR
               <div>
                 <h2 className="text-2xl font-bold">{candidate.name}</h2>
                 <p className="text-lg text-muted-foreground">{candidate.role}</p>
+                {primaryRole !== "Unknown" && (
+                  <Badge variant="outline" className="mt-1">Primary role: {primaryRole}</Badge>
+                )}
               </div>
             </DialogTitle>
           </DialogHeader>
@@ -210,6 +253,7 @@ export function CandidateCard({ candidate, isSelected, isDisabled, onSelect, onR
                 <Badge variant="secondary" className="text-sm">
                   {candidate.skills.length} Skills
                 </Badge>
+                <Badge variant="outline" className="text-xs">Score {score}</Badge>
               </h3>
               <div className="flex flex-wrap gap-2">
                 {candidate.skills.map((skill) => (

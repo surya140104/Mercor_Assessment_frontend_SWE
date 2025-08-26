@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, Users, Award, MapPin, Calendar, Download, Share2 } from "lucide-react"
+import { ArrowLeft, Users, Award, MapPin, Calendar, Download, Share2, FileText } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -11,6 +11,7 @@ import { Separator } from "@/components/ui/separator"
 import { useToast } from "@/hooks/use-toast"
 import { Toaster } from "@/components/ui/toaster"
 import type { Candidate } from "@/types/candidate"
+import { summarizeRoles, summarizeSkills } from "@/lib/scoring"
 
 export default function FinalizeTeamPage() {
   const router = useRouter()
@@ -67,12 +68,19 @@ export default function FinalizeTeamPage() {
     // Location analysis
     const locations = [...new Set(team.map((c) => c.location))]
 
+    // Role coverage
+    const roleSummary = summarizeRoles(team)
+
     // Generate explanation (requested phrasing)
     const genderBreakdownPhrase = generateGenderBreakdownPhrase(genderCounts)
     const uniqueSkillsPhrase = uniqueSkills.slice(0, 6).join(", ")
     const experiencePhrase = `experience from ${minExp} to ${maxExp} years`
     const locationDiversityPhrase =
       locations.length === 1 ? `candidates all from ${locations[0]}` : `candidates from ${locations.length} different locations`
+
+    const rolesCovered = Object.entries(roleSummary.coverage)
+      .filter(([role, count]) => role !== "Unknown" && (count as number) > 0)
+      .map(([role]) => role)
 
     const finalExplanation =
       "We selected a balanced team covering multiple skills, diverse genders, and experience levels across multiple locations."
@@ -87,7 +95,7 @@ export default function FinalizeTeamPage() {
     const skillsOverlapTooMuch = topSkillEntry ? topSkillEntry[1] >= 4 : false
 
     return {
-      summary: `${genderBreakdownPhrase}; skills include ${uniqueSkillsPhrase}; ${experiencePhrase}; ${locationDiversityPhrase}. ${finalExplanation}`,
+      summary: `${genderBreakdownPhrase}; skills include ${uniqueSkillsPhrase}; ${experiencePhrase}; ${locationDiversityPhrase}; roles covered: ${rolesCovered.join(", ")}. ${finalExplanation}`,
       details: {
         genderCounts,
         skillCategories,
@@ -97,6 +105,7 @@ export default function FinalizeTeamPage() {
         totalSkills: allSkills.length,
         locationDiversityCount: locations.length,
         uniqueSkillsList: uniqueSkills,
+        roleSummary,
         validations: {
           allSameGender,
           skillsOverlapTooMuch,
@@ -215,6 +224,15 @@ export default function FinalizeTeamPage() {
     }
   }
 
+  const handleExportPDF = () => {
+    // Use browser print-to-PDF
+    try {
+      window.print()
+    } catch (e) {
+      console.error("PDF export failed", e)
+    }
+  }
+
   const getInitials = (name: string) => {
     return name
       .split(" ")
@@ -239,7 +257,7 @@ export default function FinalizeTeamPage() {
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <p className="text-muted-foreground text-lg mb-4">No team selection found.</p>
-          <Button onClick={() => router.push("/")}>
+          <Button onClick={() => router.push("/")}> 
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Selection
           </Button>
@@ -249,6 +267,7 @@ export default function FinalizeTeamPage() {
   }
 
   const analysis = generateTeamAnalysis(selectedTeam)
+  const skillsCoverage = summarizeSkills(selectedTeam)
 
   return (
     <div className="min-h-screen bg-background">
@@ -276,11 +295,16 @@ export default function FinalizeTeamPage() {
               <Download className="h-4 w-4" />
               Export
             </Button>
+            <Button variant="outline" onClick={handleExportPDF} className="gap-2 bg-transparent">
+              <FileText className="h-4 w-4" />
+              Export PDF
+            </Button>
           </div>
         </div>
       </header>
 
       <div className="container mx-auto px-4 py-8 max-w-4xl">
+        {/* Team Members */}
         {/* Validation messages */}
         {(() => {
           const v = analysis.details.validations
@@ -306,7 +330,6 @@ export default function FinalizeTeamPage() {
           )
         })()}
 
-        {/* Team Members */}
         <div className="mb-8">
           <h2 className="text-2xl font-semibold mb-6">Team Members</h2>
           <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
@@ -387,8 +410,28 @@ export default function FinalizeTeamPage() {
               <p className="text-muted-foreground leading-relaxed">{analysis.summary}</p>
             </div>
 
+            {/* AI Justification Summary */}
+            <div>
+              <h4 className="font-medium mb-3">AI Justification Summary</h4>
+              <p className="text-sm leading-relaxed">
+                Based on the selected team, we observe a gender mix of {Object.entries(analysis.details.genderCounts)
+                  .map(([g, c]) => `${c} ${g.toLowerCase()}`)
+                  .join(", ")}. The team covers {analysis.details.uniqueSkills} unique skills including {analysis.details.uniqueSkillsList
+                  .slice(0, 8)
+                  .join(", ")}
+                {analysis.details.uniqueSkillsList.length > 8 ? ", and more" : ""}. Experience ranges from {analysis.details.experienceRange.min} to {analysis.details.experienceRange.max} years with an average of {analysis.details.experienceRange.avg} years. Members are from {analysis.details.locationDiversityCount} different locations. Role coverage includes {Object.entries(analysis.details.roleSummary.coverage)
+                  .filter(([r, count]) => r !== "Unknown" && (count as number) > 0)
+                  .map(([r, count]) => `${r} (${count as number})`)
+                  .join(", ")}
+                {analysis.details.roleSummary.missing.length > 0
+                  ? `. Missing roles: ${analysis.details.roleSummary.missing.join(", ")}.`
+                  : "."} These selections balance core competencies, complementarity of skills, and diversity across demographics and geography.
+              </p>
+            </div>
+
             <Separator />
 
+            {/* Diversity cards and coverage */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <h4 className="font-medium mb-3">Gender Distribution</h4>
@@ -449,6 +492,37 @@ export default function FinalizeTeamPage() {
                   ))}
                 </div>
               </div>
+            </div>
+
+            <Separator />
+
+            {/* Skills Coverage */}
+            <div>
+              <h4 className="font-medium mb-3">Skills Coverage</h4>
+              <div className="flex flex-wrap gap-1">
+                {skillsCoverage.map((skill) => (
+                  <Badge key={skill} variant="outline" className="text-xs">{skill}</Badge>
+                ))}
+              </div>
+            </div>
+
+            {/* Role Coverage */}
+            <div>
+              <h4 className="font-medium mb-3">Role Coverage</h4>
+              <div className="flex flex-wrap gap-2">
+                {Object.entries(analysis.details.roleSummary.coverage)
+                  .filter(([role]) => role !== "Unknown")
+                  .map(([role, count]) => (
+                    <Badge key={role} variant={count > 0 ? "secondary" : "outline"}>
+                      {role}: {count as number}
+                    </Badge>
+                  ))}
+              </div>
+              {analysis.details.roleSummary.missing.length > 0 && (
+                <p className="text-xs text-muted-foreground mt-2">
+                  Missing roles: {analysis.details.roleSummary.missing.join(", ")}
+                </p>
+              )}
             </div>
           </CardContent>
         </Card>

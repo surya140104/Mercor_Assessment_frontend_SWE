@@ -4,10 +4,12 @@ import { useState, useEffect } from "react"
 import type { Candidate } from "@/types/candidate"
 
 const STORAGE_KEY = "hiresmart-selected-team"
+const BOOKMARKS_KEY = "hiresmart-bookmarked-candidates"
 const MAX_TEAM_SIZE = 5
 
 export function useTeamSelection() {
   const [selectedCandidates, setSelectedCandidates] = useState<Candidate[]>([])
+  const [bookmarkedCandidates, setBookmarkedCandidates] = useState<Candidate[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
   // Load from localStorage on mount
@@ -20,6 +22,13 @@ export function useTeamSelection() {
           setSelectedCandidates(parsed)
         }
       }
+      const storedBookmarks = localStorage.getItem(BOOKMARKS_KEY)
+      if (storedBookmarks) {
+        const parsedB = JSON.parse(storedBookmarks)
+        if (Array.isArray(parsedB)) {
+          setBookmarkedCandidates(parsedB)
+        }
+      }
     } catch (error) {
       console.error("Failed to load team selection from storage:", error)
     } finally {
@@ -27,7 +36,7 @@ export function useTeamSelection() {
     }
   }, [])
 
-  // Save to localStorage whenever selection changes
+  // Save selection
   useEffect(() => {
     if (!isLoading) {
       try {
@@ -37,6 +46,17 @@ export function useTeamSelection() {
       }
     }
   }, [selectedCandidates, isLoading])
+
+  // Save bookmarks
+  useEffect(() => {
+    if (!isLoading) {
+      try {
+        localStorage.setItem(BOOKMARKS_KEY, JSON.stringify(bookmarkedCandidates))
+      } catch (error) {
+        console.error("Failed to save bookmarks:", error)
+      }
+    }
+  }, [bookmarkedCandidates, isLoading])
 
   const addCandidate = (candidate: Candidate): { success: boolean; message: string } => {
     if (selectedCandidates.length >= MAX_TEAM_SIZE) {
@@ -83,6 +103,20 @@ export function useTeamSelection() {
       success: true,
       message: "Team selection has been cleared.",
     }
+  }
+
+  // Bookmarks
+  const toggleBookmark = (candidate: Candidate) => {
+    setBookmarkedCandidates((prev) => {
+      if (prev.some((c) => c.id === candidate.id)) {
+        return prev.filter((c) => c.id !== candidate.id)
+      }
+      return [...prev, candidate]
+    })
+  }
+
+  const isBookmarked = (candidateId: string): boolean => {
+    return bookmarkedCandidates.some((c) => c.id === candidateId)
   }
 
   const isSelected = (candidateId: string): boolean => {
@@ -145,10 +179,13 @@ export function useTeamSelection() {
 
   return {
     selectedCandidates,
+    bookmarkedCandidates,
     isLoading,
     addCandidate,
     removeCandidate,
     clearSelection,
+    toggleBookmark,
+    isBookmarked,
     isSelected,
     isDisabled,
     canFinalize,
