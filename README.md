@@ -2,6 +2,7 @@
 
 HireSmart is a recruiting assistant that helps hiring managers quickly build a balanced team of 5 candidates from a large applicant pool (900+). It focuses on skills coverage, diversity, and complementary experience — with fast filtering, smart scoring, role coverage, and a polished Finalize experience.
 
+video demo loom link - https://www.loom.com/share/891e4382db104ae5aefcf504bd3bbd32?sid=bb3f53fa-6a89-4bf8-ba10-d885ac0307ab
 
 ## ✨ Core Capabilities
 
