@@ -8,6 +8,32 @@ export interface Candidate {
   location: string
   email: string
   avatar?: string
+  // Additional rich data from JSON
+  phone?: string
+  submitted_at?: string
+  work_availability?: string[]
+  annual_salary_expectation?: Record<string, string>
+  work_experiences?: Array<{
+    company: string
+    roleName: string
+    startDate?: string
+    endDate?: string
+    description?: string
+  }>
+  education?: {
+    highest_level?: string
+    degrees?: Array<{
+      degree?: string
+      subject?: string
+      school?: string
+      gpa?: string
+      startDate?: string
+      endDate?: string
+      originalSchool?: string
+      isTop50?: boolean
+      isTop25?: boolean
+    }>
+  }
 }
 
 export interface TeamSelection {

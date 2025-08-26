@@ -1,12 +1,11 @@
 "use client"
 
 import { useState } from "react"
-import { Search, Filter, X } from "lucide-react"
+import { Search, Filter, X, MapPin } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Slider } from "@/components/ui/slider"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import type { FilterState, Candidate } from "@/types/candidate"
@@ -26,9 +25,19 @@ export function FiltersSidebar({
   onRemoveCandidate,
 }: FiltersSidebarProps) {
   const [isOpen, setIsOpen] = useState(false)
+  const [skillsSearchQuery, setSkillsSearchQuery] = useState("")
+  const [locationSearchQuery, setLocationSearchQuery] = useState("")
   const allSkills = getAllSkills()
   const allLocations = getAllLocations()
   const [minExp, maxExp] = getExperienceRange()
+
+  // Filter skills based on search query
+  const filteredSkills = allSkills.filter((skill) => skill.toLowerCase().includes(skillsSearchQuery.toLowerCase()))
+
+  // Filter locations based on search query
+  const filteredLocations = allLocations.filter((location) =>
+    location.toLowerCase().includes(locationSearchQuery.toLowerCase()),
+  )
 
   const updateFilters = (updates: Partial<FilterState>) => {
     onFiltersChange({ ...filters, ...updates })
@@ -49,14 +58,18 @@ export function FiltersSidebar({
   }
 
   const clearAllFilters = () => {
+    setSkillsSearchQuery("")
+    setLocationSearchQuery("")
     updateFilters({
       skills: [],
       gender: [],
-      location: "All locations",
+      location: "",
       experienceRange: [minExp, maxExp],
       searchQuery: "",
     })
   }
+
+  const isAllLocations = !filters.location
 
   return (
     <>
@@ -93,19 +106,50 @@ export function FiltersSidebar({
           <CardHeader className="pb-3">
             <CardTitle className="text-sm">Skills</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-2 max-h-48 overflow-y-auto">
-            {allSkills.map((skill) => (
-              <div key={skill} className="flex items-center space-x-2">
-                <Checkbox
-                  id={skill}
-                  checked={filters.skills.includes(skill)}
-                  onCheckedChange={() => toggleSkill(skill)}
-                />
-                <Label htmlFor={skill} className="text-sm font-normal">
-                  {skill}
-                </Label>
-              </div>
-            ))}
+          <CardContent className="space-y-3">
+            {/* Skills Search */}
+            <div className="relative">
+              <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search skills..."
+                value={skillsSearchQuery}
+                onChange={(e) => setSkillsSearchQuery(e.target.value)}
+                className="pl-9 text-sm"
+              />
+              {skillsSearchQuery && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSkillsSearchQuery("")}
+                  className="absolute right-1 top-1 h-6 w-6 p-0 hover:bg-muted"
+                >
+                  <X className="h-3 w-3" />
+                </Button>
+              )}
+            </div>
+
+            {/* Skills List */}
+            <div className="space-y-2 max-h-48 overflow-y-auto">
+              {filteredSkills.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-2">
+                  No skills found matching "{skillsSearchQuery}"
+                </p>
+              ) : (
+                filteredSkills.map((skill) => (
+                  <div key={skill} className="flex items-center space-x-2">
+                    <Checkbox id={skill} checked={filters.skills.includes(skill)} onCheckedChange={() => toggleSkill(skill)} />
+                    <Label htmlFor={skill} className="text-sm font-normal">
+                      {skill}
+                    </Label>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* Skills Count */}
+            <div className="text-xs text-muted-foreground text-center pt-2 border-t">
+              {filteredSkills.length} of {allSkills.length} skills
+            </div>
           </CardContent>
         </Card>
 
@@ -117,11 +161,7 @@ export function FiltersSidebar({
           <CardContent className="space-y-2">
             {["Male", "Female", "Other"].map((gender) => (
               <div key={gender} className="flex items-center space-x-2">
-                <Checkbox
-                  id={gender}
-                  checked={filters.gender.includes(gender)}
-                  onCheckedChange={() => toggleGender(gender)}
-                />
+                <Checkbox id={gender} checked={filters.gender.includes(gender)} onCheckedChange={() => toggleGender(gender)} />
                 <Label htmlFor={gender} className="text-sm font-normal">
                   {gender}
                 </Label>
@@ -130,25 +170,65 @@ export function FiltersSidebar({
           </CardContent>
         </Card>
 
-        {/* Location Filter */}
+        {/* Location Filter (searchable list) */}
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm">Location</CardTitle>
           </CardHeader>
-          <CardContent>
-            <Select value={filters.location} onValueChange={(value) => updateFilters({ location: value })}>
-              <SelectTrigger>
-                <SelectValue placeholder="All locations" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="All locations">All locations</SelectItem>
-                {allLocations.map((location) => (
-                  <SelectItem key={location} value={location}>
-                    {location}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <CardContent className="space-y-3">
+            {/* Location Search */}
+            <div className="relative">
+              <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search locations..."
+                value={locationSearchQuery}
+                onChange={(e) => setLocationSearchQuery(e.target.value)}
+                className="pl-9 text-sm"
+              />
+              {locationSearchQuery && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setLocationSearchQuery("")}
+                  className="absolute right-1 top-1 h-6 w-6 p-0 hover:bg-muted"
+                >
+                  <X className="h-3 w-3" />
+                </Button>
+              )}
+            </div>
+
+            {/* Location List */}
+            <div className="space-y-2 max-h-48 overflow-y-auto">
+              <button
+                className={`w-full text-left text-sm px-2 py-1 rounded-md flex items-center gap-2 ${
+                  isAllLocations ? "bg-primary/10 text-primary" : "hover:bg-muted"
+                }`}
+                onClick={() => updateFilters({ location: "" })}
+              >
+                <MapPin className="h-3 w-3" /> All locations
+              </button>
+              {filteredLocations.map((location) => (
+                <button
+                  key={location}
+                  className={`w-full text-left text-sm px-2 py-1 rounded-md flex items-center gap-2 ${
+                    filters.location === location ? "bg-primary/10 text-primary" : "hover:bg-muted"
+                  }`}
+                  onClick={() => updateFilters({ location })}
+                >
+                  <MapPin className="h-3 w-3" /> {location}
+                </button>
+              ))}
+              {filteredLocations.length === 0 && locationSearchQuery && (
+                <p className="text-sm text-muted-foreground text-center py-2">
+                  No locations found matching "{locationSearchQuery}"
+                </p>
+              )}
+            </div>
+
+            {/* Location Count */}
+            <div className="text-xs text-muted-foreground text-center pt-2 border-t">
+              {filteredLocations.length} of {allLocations.length} locations
+            </div>
           </CardContent>
         </Card>
 

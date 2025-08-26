@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useDeferredValue } from "react"
 import { useRouter } from "next/navigation"
 import { Header } from "@/components/header"
 import { FiltersSidebar } from "@/components/filters-sidebar"
@@ -37,36 +37,40 @@ export default function HomePage() {
     searchQuery: "",
   })
 
+  // Use deferred value for smoother updates with large lists
+  const deferredFilters = useDeferredValue(filters)
+
   const filteredCandidates = useMemo(() => {
+    const f = deferredFilters
     return mockCandidates.filter((candidate) => {
       // Search query filter
-      if (filters.searchQuery && !candidate.name.toLowerCase().includes(filters.searchQuery.toLowerCase())) {
+      if (f.searchQuery && !candidate.name.toLowerCase().includes(f.searchQuery.toLowerCase())) {
         return false
       }
 
       // Skills filter
-      if (filters.skills.length > 0 && !filters.skills.some((skill) => candidate.skills.includes(skill))) {
+      if (f.skills.length > 0 && !f.skills.some((skill) => candidate.skills.includes(skill))) {
         return false
       }
 
       // Gender filter
-      if (filters.gender.length > 0 && !filters.gender.includes(candidate.gender)) {
+      if (f.gender.length > 0 && !f.gender.includes(candidate.gender)) {
         return false
       }
 
-      // Location filter
-      if (filters.location && candidate.location !== filters.location) {
+      // Location filter (empty means all)
+      if (f.location && candidate.location !== f.location) {
         return false
       }
 
       // Experience range filter
-      if (candidate.experience < filters.experienceRange[0] || candidate.experience > filters.experienceRange[1]) {
+      if (candidate.experience < f.experienceRange[0] || candidate.experience > f.experienceRange[1]) {
         return false
       }
 
       return true
     })
-  }, [filters])
+  }, [deferredFilters])
 
   const handleSelectCandidate = (candidate: any) => {
     const result = addCandidate(candidate)
@@ -98,7 +102,7 @@ export default function HomePage() {
     if (!canFinalize()) {
       toast({
         title: "Cannot Finalize",
-        description: "Please select exactly 5 candidates to finalize your team.",
+        description: "You must select exactly 5 candidates to finalize your team.",
         variant: "destructive",
       })
       return
@@ -107,78 +111,49 @@ export default function HomePage() {
     router.push("/finalize")
   }
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading your team selection...</p>
-        </div>
-      </div>
-    )
-  }
+  const stats = getSelectionStats()
 
   return (
     <div className="min-h-screen bg-background">
       <Header selectedCount={selectedCandidates.length} onFinalizeTeam={handleFinalizeTeam} />
-
-      <div className="container mx-auto px-4 py-6">
-        <div className="flex flex-col lg:flex-row gap-6">
-          {/* Filters Sidebar */}
-          <aside className="lg:w-80 flex-shrink-0 space-y-6">
-            <FiltersSidebar
-              filters={filters}
-              onFiltersChange={setFilters}
-              selectedCandidates={selectedCandidates}
-              onRemoveCandidate={handleRemoveCandidate}
-            />
-
-            <SelectionStats stats={getSelectionStats()} />
-
-            {selectedCandidates.length > 0 && (
-              <Button
-                variant="outline"
-                onClick={handleClearSelection}
-                className="w-full text-destructive hover:text-destructive bg-transparent"
-              >
-                <Trash2 className="h-4 w-4 mr-2" />
-                Clear All Selections
-              </Button>
-            )}
-          </aside>
-
-          {/* Main Content */}
-          <main className="flex-1">
-            <div className="mb-6">
-              <h2 className="text-2xl font-semibold mb-2">Available Candidates</h2>
-              <p className="text-muted-foreground">
-                Showing {filteredCandidates.length} of {mockCandidates.length} candidates
-              </p>
-            </div>
-
-            {filteredCandidates.length === 0 ? (
-              <div className="text-center py-12">
-                <p className="text-muted-foreground text-lg">No candidates match your current filters.</p>
-                <p className="text-sm text-muted-foreground mt-2">Try adjusting your search criteria.</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                {filteredCandidates.map((candidate) => (
-                  <CandidateCard
-                    key={candidate.id}
-                    candidate={candidate}
-                    isSelected={isSelected(candidate.id)}
-                    isDisabled={isDisabled(candidate.id)}
-                    onSelect={handleSelectCandidate}
-                    onRemove={handleRemoveCandidate}
-                  />
-                ))}
-              </div>
-            )}
-          </main>
+      <main className="container mx-auto px-4 py-6 grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-6">
+        <div>
+          <FiltersSidebar
+            filters={filters}
+            onFiltersChange={setFilters}
+            selectedCandidates={selectedCandidates}
+            onRemoveCandidate={handleRemoveCandidate}
+          />
         </div>
-      </div>
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <h1 className="text-xl font-semibold">Candidates</h1>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" className="bg-transparent" onClick={handleClearSelection}>
+                <Trash2 className="h-4 w-4 mr-2" /> Clear Selection
+              </Button>
+              <Button onClick={handleFinalizeTeam} disabled={!canFinalize()}>
+                Finalize Team
+              </Button>
+            </div>
+          </div>
 
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            {filteredCandidates.map((candidate) => (
+              <CandidateCard
+                key={candidate.id}
+                candidate={candidate}
+                isSelected={isSelected(candidate.id)}
+                isDisabled={isDisabled(candidate.id)}
+                onSelect={handleSelectCandidate}
+                onRemove={handleRemoveCandidate}
+              />)
+            )}
+          </div>
+
+          <SelectionStats stats={stats} />
+        </div>
+      </main>
       <Toaster />
     </div>
   )

@@ -67,17 +67,27 @@ export default function FinalizeTeamPage() {
     // Location analysis
     const locations = [...new Set(team.map((c) => c.location))]
 
-    // Generate explanation
-    const genderText = generateGenderText(genderCounts)
-    const skillsText = generateSkillsText(skillCategories)
-    const experienceText = `experience ranging from ${minExp} to ${maxExp} years (average: ${avgExp} years)`
-    const locationText =
-      locations.length === 1
-        ? `all based in ${locations[0]}`
-        : `distributed across ${locations.length} locations: ${locations.join(", ")}`
+    // Generate explanation (requested phrasing)
+    const genderBreakdownPhrase = generateGenderBreakdownPhrase(genderCounts)
+    const uniqueSkillsPhrase = uniqueSkills.slice(0, 6).join(", ")
+    const experiencePhrase = `experience from ${minExp} to ${maxExp} years`
+    const locationDiversityPhrase =
+      locations.length === 1 ? `candidates all from ${locations[0]}` : `candidates from ${locations.length} different locations`
+
+    const finalExplanation =
+      "We selected a balanced team covering multiple skills, diverse genders, and experience levels across multiple locations."
+
+    // Validation suggestions
+    const allSameGender = Object.keys(genderCounts).length === 1 && team.length === 5
+    const skillFrequency = allSkills.reduce((acc, s) => {
+      acc[s] = (acc[s] || 0) + 1
+      return acc
+    }, {} as Record<string, number>)
+    const topSkillEntry = Object.entries(skillFrequency).sort((a, b) => b[1] - a[1])[0]
+    const skillsOverlapTooMuch = topSkillEntry ? topSkillEntry[1] >= 4 : false
 
     return {
-      summary: `This team of 5 professionals offers ${genderText}, ${skillsText}, ${experienceText}, and ${locationText}. This diverse composition ensures comprehensive coverage of technical expertise while promoting varied perspectives and collaborative innovation.`,
+      summary: `${genderBreakdownPhrase}; skills include ${uniqueSkillsPhrase}; ${experiencePhrase}; ${locationDiversityPhrase}. ${finalExplanation}`,
       details: {
         genderCounts,
         skillCategories,
@@ -85,6 +95,13 @@ export default function FinalizeTeamPage() {
         locations,
         uniqueSkills: uniqueSkills.length,
         totalSkills: allSkills.length,
+        locationDiversityCount: locations.length,
+        uniqueSkillsList: uniqueSkills,
+        validations: {
+          allSameGender,
+          skillsOverlapTooMuch,
+          topSkill: topSkillEntry ? { name: topSkillEntry[0], count: topSkillEntry[1] } : null,
+        },
       },
     }
   }
@@ -129,18 +146,14 @@ export default function FinalizeTeamPage() {
     return categorized
   }
 
-  const generateGenderText = (genderCounts: Record<string, number>) => {
+  const generateGenderBreakdownPhrase = (genderCounts: Record<string, number>) => {
+    const label = (g: string) => (g === "Male" ? "men" : g === "Female" ? "women" : "non-binary/other")
     const entries = Object.entries(genderCounts)
-    if (entries.length === 1) {
-      const [gender, count] = entries[0]
-      return `${count} ${gender.toLowerCase()} team members`
-    }
-
-    const parts = entries.map(([gender, count]) => `${count} ${gender.toLowerCase()}`)
-    if (parts.length === 2) {
-      return `${parts[0]} and ${parts[1]} team members`
-    }
-    return `${parts.slice(0, -1).join(", ")}, and ${parts[parts.length - 1]} team members`
+    if (entries.length === 0) return "no gender data"
+    const parts = entries.map(([g, c]) => `${c} ${label(g)}`)
+    if (parts.length === 1) return parts[0]
+    if (parts.length === 2) return `${parts[0]}, ${parts[1]}`
+    return `${parts.slice(0, -1).join(", ")}, ${parts[parts.length - 1]}`
   }
 
   const generateSkillsText = (skillCategories: Record<string, string[]>) => {
@@ -268,10 +281,35 @@ export default function FinalizeTeamPage() {
       </header>
 
       <div className="container mx-auto px-4 py-8 max-w-4xl">
+        {/* Validation messages */}
+        {(() => {
+          const v = analysis.details.validations
+          const messages: string[] = []
+          if (v.allSameGender) messages.push("Try for more gender diversity.")
+          if (v.skillsOverlapTooMuch)
+            messages.push(
+              v.topSkill
+                ? `Skills overlap heavily (e.g., ${v.topSkill.name} appears in ${v.topSkill.count}/5). Consider adding different skills.`
+                : "Skills overlap heavily. Consider adding different skills.",
+            )
+          if (messages.length === 0) return null
+          return (
+            <div className="mb-6">
+              <div className="rounded-md border border-yellow-200 bg-yellow-50 p-4 text-sm text-yellow-900">
+                <ul className="list-disc pl-5 space-y-1">
+                  {messages.map((m, i) => (
+                    <li key={i}>{m}</li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          )
+        })()}
+
         {/* Team Members */}
         <div className="mb-8">
           <h2 className="text-2xl font-semibold mb-6">Team Members</h2>
-          <div className="grid gap-4">
+          <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
             {selectedTeam.map((candidate, index) => (
               <Card key={candidate.id}>
                 <CardContent className="p-6">
@@ -335,6 +373,15 @@ export default function FinalizeTeamPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
+            {/* Quick stats badges */}
+            <div className="flex flex-wrap gap-2">
+              <Badge variant="secondary">{analysis.details.uniqueSkills} unique skills</Badge>
+              <Badge variant="secondary">{analysis.details.locationDiversityCount} locations</Badge>
+              <Badge variant="secondary">
+                {analysis.details.experienceRange.min}-{analysis.details.experienceRange.max} yrs exp
+              </Badge>
+            </div>
+
             <div>
               <h4 className="font-medium mb-3">Why This Team Was Selected</h4>
               <p className="text-muted-foreground leading-relaxed">{analysis.summary}</p>

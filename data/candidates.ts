@@ -1,227 +1,72 @@
 import type { Candidate } from "@/types/candidate"
+import rawSubmissions from "@/form-submissions.json"
 
-export const mockCandidates: Candidate[] = [
-  {
-    id: "1",
-    name: "Sarah Chen",
-    role: "Frontend Developer",
-    skills: ["React", "TypeScript", "CSS", "JavaScript"],
-    experience: 4,
-    gender: "Female",
-    location: "San Francisco",
-    email: "sarah.chen@email.com",
-  },
-  {
-    id: "2",
-    name: "Marcus Johnson",
-    role: "Backend Developer",
-    skills: ["Node.js", "Python", "PostgreSQL", "AWS"],
-    experience: 6,
-    gender: "Male",
-    location: "New York",
-    email: "marcus.johnson@email.com",
-  },
-  {
-    id: "3",
-    name: "Priya Patel",
-    role: "Full Stack Developer",
-    skills: ["React", "Node.js", "MongoDB", "GraphQL"],
-    experience: 5,
-    gender: "Female",
-    location: "Austin",
-    email: "priya.patel@email.com",
-  },
-  {
-    id: "4",
-    name: "Alex Rivera",
-    role: "DevOps Engineer",
-    skills: ["Docker", "Kubernetes", "AWS", "Jenkins"],
-    experience: 7,
+type Submission = {
+  name?: string
+  email?: string
+  phone?: string
+  location?: string
+  submitted_at?: string
+  work_availability?: string[]
+  annual_salary_expectation?: Record<string, string>
+  skills?: unknown
+  work_experiences?: Array<{ 
+    company?: string
+    roleName?: string
+    startDate?: string
+    endDate?: string
+    description?: string
+  }>
+  education?: {
+    highest_level?: string
+    degrees?: Array<{
+      degree?: string
+      subject?: string
+      school?: string
+      gpa?: string
+      startDate?: string
+      endDate?: string
+      originalSchool?: string
+      isTop50?: boolean
+      isTop25?: boolean
+    }>
+  }
+}
+
+const mapSubmissionToCandidate = (submission: Submission, index: number): Candidate => {
+  const skillsArray = Array.isArray(submission.skills)
+    ? (submission.skills as unknown[]).filter(Boolean).map((s) => String(s))
+    : []
+  const role = submission.work_experiences?.[0]?.roleName || "Candidate"
+  const experienceYears = submission.work_experiences?.length ?? 0
+
+  return {
+    id: String(index + 1),
+    name: submission.name || "Unknown",
+    role,
+    skills: skillsArray,
+    experience: experienceYears,
     gender: "Other",
-    location: "Seattle",
-    email: "alex.rivera@email.com",
-  },
-  {
-    id: "5",
-    name: "David Kim",
-    role: "UI/UX Designer",
-    skills: ["Figma", "Adobe XD", "Prototyping", "User Research"],
-    experience: 3,
-    gender: "Male",
-    location: "Los Angeles",
-    email: "david.kim@email.com",
-  },
-  {
-    id: "6",
-    name: "Emily Watson",
-    role: "Data Scientist",
-    skills: ["Python", "Machine Learning", "SQL", "R"],
-    experience: 5,
-    gender: "Female",
-    location: "Boston",
-    email: "emily.watson@email.com",
-  },
-  {
-    id: "7",
-    name: "Carlos Mendez",
-    role: "Mobile Developer",
-    skills: ["React Native", "Swift", "Kotlin", "Firebase"],
-    experience: 4,
-    gender: "Male",
-    location: "Miami",
-    email: "carlos.mendez@email.com",
-  },
-  {
-    id: "8",
-    name: "Aisha Okonkwo",
-    role: "Product Manager",
-    skills: ["Agile", "Scrum", "Product Strategy", "Analytics"],
-    experience: 6,
-    gender: "Female",
-    location: "Chicago",
-    email: "aisha.okonkwo@email.com",
-  },
-  {
-    id: "9",
-    name: "James Thompson",
-    role: "Security Engineer",
-    skills: ["Cybersecurity", "Penetration Testing", "AWS Security", "Python"],
-    experience: 8,
-    gender: "Male",
-    location: "Washington DC",
-    email: "james.thompson@email.com",
-  },
-  {
-    id: "10",
-    name: "Luna Zhang",
-    role: "Frontend Developer",
-    skills: ["Vue.js", "JavaScript", "SASS", "Webpack"],
-    experience: 3,
-    gender: "Female",
-    location: "Portland",
-    email: "luna.zhang@email.com",
-  },
-  {
-    id: "11",
-    name: "Robert Anderson",
-    role: "Backend Developer",
-    skills: ["Java", "Spring Boot", "MySQL", "Redis"],
-    experience: 9,
-    gender: "Male",
-    location: "Denver",
-    email: "robert.anderson@email.com",
-  },
-  {
-    id: "12",
-    name: "Fatima Al-Rashid",
-    role: "Cloud Architect",
-    skills: ["Azure", "Terraform", "Microservices", "Docker"],
-    experience: 10,
-    gender: "Female",
-    location: "Dallas",
-    email: "fatima.alrashid@email.com",
-  },
-  {
-    id: "13",
-    name: "Jordan Taylor",
-    role: "QA Engineer",
-    skills: ["Selenium", "Jest", "Cypress", "Test Automation"],
-    experience: 4,
-    gender: "Other",
-    location: "Phoenix",
-    email: "jordan.taylor@email.com",
-  },
-  {
-    id: "14",
-    name: "Miguel Santos",
-    role: "Game Developer",
-    skills: ["Unity", "C#", "3D Modeling", "Game Design"],
-    experience: 5,
-    gender: "Male",
-    location: "San Diego",
-    email: "miguel.santos@email.com",
-  },
-  {
-    id: "15",
-    name: "Zoe Williams",
-    role: "Frontend Developer",
-    skills: ["Angular", "TypeScript", "RxJS", "Material UI"],
-    experience: 2,
-    gender: "Female",
-    location: "Nashville",
-    email: "zoe.williams@email.com",
-  },
-  {
-    id: "16",
-    name: "Hassan Ahmed",
-    role: "Machine Learning Engineer",
-    skills: ["TensorFlow", "PyTorch", "Python", "MLOps"],
-    experience: 6,
-    gender: "Male",
-    location: "Atlanta",
-    email: "hassan.ahmed@email.com",
-  },
-  {
-    id: "17",
-    name: "Isabella Rodriguez",
-    role: "Blockchain Developer",
-    skills: ["Solidity", "Web3", "Ethereum", "Smart Contracts"],
-    experience: 3,
-    gender: "Female",
-    location: "Las Vegas",
-    email: "isabella.rodriguez@email.com",
-  },
-  {
-    id: "18",
-    name: "Kevin O'Brien",
-    role: "Site Reliability Engineer",
-    skills: ["Kubernetes", "Prometheus", "Grafana", "Linux"],
-    experience: 7,
-    gender: "Male",
-    location: "Minneapolis",
-    email: "kevin.obrien@email.com",
-  },
-  {
-    id: "19",
-    name: "Nadia Volkov",
-    role: "Technical Writer",
-    skills: ["Documentation", "API Documentation", "Markdown", "Git"],
-    experience: 4,
-    gender: "Female",
-    location: "Salt Lake City",
-    email: "nadia.volkov@email.com",
-  },
-  {
-    id: "20",
-    name: "Tyler Brooks",
-    role: "Database Administrator",
-    skills: ["PostgreSQL", "MongoDB", "Database Design", "Performance Tuning"],
-    experience: 8,
-    gender: "Male",
-    location: "Orlando",
-    email: "tyler.brooks@email.com",
-  },
-  {
-    id: "21",
-    name: "Samira Hassan",
-    role: "AI Research Scientist",
-    skills: ["Deep Learning", "NLP", "Computer Vision", "Research"],
-    experience: 9,
-    gender: "Female",
-    location: "San Francisco",
-    email: "samira.hassan@email.com",
-  },
-  {
-    id: "22",
-    name: "Ryan Mitchell",
-    role: "Growth Hacker",
-    skills: ["Marketing Analytics", "A/B Testing", "SQL", "Growth Strategy"],
-    experience: 5,
-    gender: "Male",
-    location: "New York",
-    email: "ryan.mitchell@email.com",
-  },
-]
+    location: submission.location || "Unknown",
+    email: submission.email || `user${index + 1}@example.com`,
+    phone: submission.phone,
+    submitted_at: submission.submitted_at,
+    work_availability: submission.work_availability,
+    annual_salary_expectation: submission.annual_salary_expectation,
+    work_experiences: submission.work_experiences?.map(exp => ({
+      company: exp.company || "Unknown Company",
+      roleName: exp.roleName || "Unknown Role",
+      startDate: exp.startDate,
+      endDate: exp.endDate,
+      description: exp.description
+    })) || [],
+    education: submission.education
+  }
+}
+
+const submissions = (rawSubmissions as unknown as Submission[]) || []
+
+export const mockCandidates: Candidate[] = submissions.map(mapSubmissionToCandidate)
 
 // Helper functions for filtering
 export const getAllSkills = (): string[] => {
